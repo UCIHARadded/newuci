@@ -92,15 +92,20 @@ def load_group(folder):
         X = load_file(os.path.join(folder, 'X_test.txt'))
         y = load_file(os.path.join(folder, 'y_test.txt'))
         subjects = load_file(os.path.join(folder, 'subject_test.txt'))
+
     y = y.flatten()
+    # ✅ Normalize only if needed
     if y.min() == 1:
-        y = y - 1  # only subtract 1 if labels start from 1    
+        y = y - 1  # Convert 1-based labels to 0-based
+
+    print(f"[DEBUG] Loaded y labels: min={y.min()}, max={y.max()}, unique={np.unique(y)}")
 
     return (
         torch.tensor(X, dtype=torch.float32),
-        torch.tensor(y.flatten() - 1, dtype=torch.long),       # Make classes 0-based
-        torch.tensor(subjects.flatten(), dtype=torch.long)
+        torch.tensor(y, dtype=torch.long),
+        torch.tensor(subjects.flatten(), dtype=torch.long),
     )
+
 
 
 def load_file(filepath):
