@@ -120,7 +120,7 @@ def get_args():
     parser.add_argument('--gpu_id', type=str, nargs='?', default='0', help="device id to run")
     parser.add_argument('--layer', type=str, default="bn", choices=["ori", "bn"])
     parser.add_argument('--lam', type=float, default=0.0)
-    parser.add_argument('--latent_domain_num', type=int, default=30)
+    parser.add_argument('--latent_domain_num', type=int, default=6)
     parser.add_argument('--local_epoch', type=int, default=1, help='local iterations')
     parser.add_argument('--lr', type=float, default=1e-2, help="learning rate")
     parser.add_argument('--lr_decay1', type=float, default=1.0, help='for pretrained featurizer')
