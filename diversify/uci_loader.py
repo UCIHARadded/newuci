@@ -74,8 +74,8 @@ def get_uci_har_dataloader(args):
     X_train = X_train.view(X_train.size(0), 1, 1, -1)
     X_test = X_test.view(X_test.size(0), 1, 1, -1)
 
-    train_dataset = TensorDataset(X_train, y_train, s_train)
-    test_dataset = TensorDataset(X_test, y_test, s_test)
+    train_dataset = TensorDataset(X_train, y_train, s_train, torch.zeros_like(s_train), s_train)
+    test_dataset = TensorDataset(X_test, y_test, s_test, torch.zeros_like(s_test), s_test)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
