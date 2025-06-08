@@ -57,13 +57,41 @@ def get_act_dataloader(args):
     return train_loader, train_loader_noshuffle, valid_loader, target_loader, tr, val, targetdata
 
 def get_uci_har_dataloader(args):
-    def load_file(filepath):
-        return np.loadtxt(filepath)
+    X_train, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
+    X_test, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
+
+    # normalize
+    X_train = (X_train - X_train.mean()) / X_train.std()
+    X_test = (X_test - X_test.mean()) / X_test.std()
+
+    # reshape to (N, C, 1, T) for CNN
+    N_train, T = X_train.shape
+    N_test, _ = X_test.shape
+    X_train = X_train.view(N_train, T, 1).permute(0, 2, 1).unsqueeze(2)
+    X_test = X_test.view(N_test, T, 1).permute(0, 2, 1).unsqueeze(2)
+
+    train_dataset = torch.utils.data.TensorDataset(X_train, y_train, s_train)
+    test_dataset = torch.utils.data.TensorDataset(X_test, y_test, s_test)
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
+
+    # for compatibility
+    return train_loader, train_loader, test_loader, test_loader, train_dataset, test_dataset, test_dataset
+
 
     def load_group(folder):
-        X = load_file(os.path.join(folder, 'X.txt'))
-        y = load_file(os.path.join(folder, 'y.txt')).astype(int) - 1
-        return X, y
+    if 'train' in folder:
+        X = load_file(os.path.join(folder, 'X_train.txt'))
+        y = load_file(os.path.join(folder, 'y_train.txt'))
+        subjects = load_file(os.path.join(folder, 'subject_train.txt'))
+    else:
+        X = load_file(os.path.join(folder, 'X_test.txt'))
+        y = load_file(os.path.join(folder, 'y_test.txt'))
+        subjects = load_file(os.path.join(folder, 'subject_test.txt'))
+
+    return torch.tensor(X, dtype=torch.float32), torch.tensor(y.flatten(), dtype=torch.long), torch.tensor(subjects.flatten(), dtype=torch.long)
+
 
     X_train, y_train = load_group(os.path.join(args.data_dir, 'train'))
     X_test, y_test = load_group(os.path.join(args.data_dir, 'test'))
