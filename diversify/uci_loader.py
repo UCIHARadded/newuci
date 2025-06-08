@@ -71,6 +71,11 @@ def get_uci_har_dataloader(args):
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
+    
+    unique_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
+    subject_to_domain = {sid: i for i, sid in enumerate(unique_subjects)}
+    s_train = torch.tensor([subject_to_domain[int(s)] for s in s_train], dtype=torch.long)
+    s_test = torch.tensor([subject_to_domain[int(s)] for s in s_test], dtype=torch.long)
 
     return train_loader, train_loader, test_loader, test_loader, train_dataset, test_dataset, test_dataset
 
