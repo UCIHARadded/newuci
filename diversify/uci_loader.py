@@ -61,21 +61,13 @@ def get_act_dataloader(args):
 # ✅ UCI-HAR Specific Loader
 # -----------------------------
 def get_uci_har_dataloader(args):
-    X_train, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
-    X_test, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
+    print("[INFO] Using UCI HAR dataset loader")
 
-    # Normalize globally
-    mean = X_train.mean()
-    std = X_train.std()
-    X_train = (X_train - mean) / (std + 1e-8)
-    X_test = (X_test - mean) / (std + 1e-8)
+    X_train_fused, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
+    X_test_fused, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
 
-    # Reshape to (N, C=1, H=1, W=561)
-    X_train = X_train.view(X_train.size(0), 1, 1, -1)
-    X_test = X_test.view(X_test.size(0), 1, 1, -1)
-
-    train_dataset = TensorDataset(X_train, y_train, s_train, torch.zeros_like(s_train), s_train)
-    test_dataset = TensorDataset(X_test, y_test, s_test, torch.zeros_like(s_test), s_test)
+    train_dataset = TensorDataset(X_train_fused, y_train, s_train, torch.zeros_like(s_train), s_train)
+    test_dataset = TensorDataset(X_test_fused, y_test, s_test, torch.zeros_like(s_test), s_test)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
@@ -84,28 +76,45 @@ def get_uci_har_dataloader(args):
 
 
 def load_group(folder):
-    if 'train' in folder:
-        X = load_file(os.path.join(folder, 'X_train.txt'))
-        y = load_file(os.path.join(folder, 'y_train.txt'))
-        subjects = load_file(os.path.join(folder, 'subject_train.txt'))
-    else:
-        X = load_file(os.path.join(folder, 'X_test.txt'))
-        y = load_file(os.path.join(folder, 'y_test.txt'))
-        subjects = load_file(os.path.join(folder, 'subject_test.txt'))
+    signal_type = 'train' if 'train' in folder else 'test'
 
-    y = y.flatten()
-    # ✅ Normalize only if needed
-    if y.min() == 1:
-        y = y - 1  # Convert 1-based labels to 0-based
+    # Load X.txt
+    X_flat = load_file(os.path.join(folder, f'X_{signal_type}.txt'))  # (N, 561)
 
-    print(f"[DEBUG] Loaded y labels: min={y.min()}, max={y.max()}, unique={np.unique(y)}")
+    # Load inertial signals
+    inertial_signals = []
+    for name in [
+        'body_acc_x', 'body_acc_y', 'body_acc_z',
+        'body_gyro_x', 'body_gyro_y', 'body_gyro_z',
+        'total_acc_x', 'total_acc_y', 'total_acc_z'
+    ]:
+        fpath = os.path.join(folder, 'Inertial Signals', f"{name}_{signal_type}.txt")
+        signal = load_file(fpath).reshape(-1, 128, 1)  # (N, 128, 1)
+        inertial_signals.append(signal)
+    X_inertial = np.concatenate(inertial_signals, axis=2)  # (N, 128, 9)
+
+    # Normalize inertial only
+    X_inertial = (X_inertial - X_inertial.mean()) / (X_inertial.std() + 1e-8)
+
+    # Reshape
+    X_inertial = torch.tensor(X_inertial.transpose(0, 2, 1), dtype=torch.float32).unsqueeze(2)  # (N, 9, 1, 128)
+    X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
+
+    # Fuse: concat along channels → (N, 570, 1, ?)
+    X_combined = torch.cat([X_flat.expand(-1, -1, 1, 128), X_inertial], dim=1)  # (N, 570, 1, 128)
+
+    # Load labels
+    y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
+    y = y - 1 if y.min() == 1 else y  # 1-based to 0-based
+    s = load_file(os.path.join(folder, f'subject_{signal_type}.txt')).astype(int).flatten()
+    
+    print(f"[DEBUG] Fused shape: {X_combined.shape} | Labels: {np.unique(y)}")
 
     return (
-        torch.tensor(X, dtype=torch.float32),
+        X_combined,
         torch.tensor(y, dtype=torch.long),
-        torch.tensor(subjects.flatten(), dtype=torch.long),
+        torch.tensor(s, dtype=torch.long)
     )
-
 
 
 def load_file(filepath):
