@@ -12,9 +12,9 @@ var_size = {
         'input_len': 200
     },
     'uci_har': {
-        'in_size': (9,),
+        'in_size': (1,),
         'ker_size': 9,
-        'input_len': 128
+        'input_len': 561
     }
 }
 
