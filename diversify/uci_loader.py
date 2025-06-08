@@ -101,7 +101,7 @@ def load_group(folder):
     X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
 
     # Fuse: concat along channels → (N, 570, 1, ?)
-    X_combined = torch.cat([X_flat.expand(-1, -1, 1, 128), X_inertial], dim=1)  # (N, 570, 1, 128)
+    X_combined = X_inertial  # (N, 9, 1, 128)
 
     # Load labels
     y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
