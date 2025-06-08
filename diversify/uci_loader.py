@@ -92,6 +92,7 @@ def load_group(folder):
         X = load_file(os.path.join(folder, 'X_test.txt'))
         y = load_file(os.path.join(folder, 'y_test.txt'))
         subjects = load_file(os.path.join(folder, 'subject_test.txt'))
+    y = y.flatten() - 1    
 
     return (
         torch.tensor(X, dtype=torch.float32),
