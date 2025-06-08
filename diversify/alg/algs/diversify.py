@@ -43,7 +43,8 @@ class Diversify(Algorithm):
 
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
-        all_x1 = all_x1.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
+        if all_x1.dim() == 2:
+            all_x1 = all_x1.unsqueeze(1).unsqueeze(2)
         all_d1 = minibatch[1].cuda().long()
         all_c1 = minibatch[4].cuda().long()
         z1 = self.dbottleneck(self.featurizer(all_x1))
@@ -112,7 +113,8 @@ class Diversify(Algorithm):
 
     def update(self, data, opt):
         all_x = data[0].cuda().float()
-        all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
+        if all_x.dim() == 2:
+            all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
         all_y = data[1].cuda().long()
         all_z = self.bottleneck(self.featurizer(all_x))
 
@@ -133,7 +135,8 @@ class Diversify(Algorithm):
 
     def update_a(self, minibatches, opt):
         all_x = minibatches[0].cuda().float()
-        all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
+        if all_x.dim() == 2:
+            all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
         all_c = minibatches[1].cuda().long()
         all_d = minibatches[4].cuda().long()
         all_y = all_d*self.args.num_classes+all_c
