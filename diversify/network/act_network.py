@@ -10,6 +10,11 @@ var_size = {
         'ker_size': 9,
         'fc_size': 32*44
     }
+    'uci_har': {
+        'in_size': 9,
+        'ker_size': 9,
+        'fc_size': 32*28
+    }
 }
 
 
