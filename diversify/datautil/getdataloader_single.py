@@ -3,6 +3,7 @@
 
 # coding=utf-8
 import numpy as np
+import uci_loader
 from torch.utils.data import DataLoader
 
 import datautil.actdata.util as actutil
@@ -41,6 +42,9 @@ def get_act_dataloader(args):
             source_datasetlist.append(tdata)
             if len(tdata)/args.batch_size < args.steps_per_epoch:
                 args.steps_per_epoch = len(tdata)/args.batch_size
+            if args.dataset == 'uci_har':
+                return uci_loader.get_uci_har_dataloader(args)
+
     rate = 0.2
     args.steps_per_epoch = int(args.steps_per_epoch*(1-rate))
     tdata = combindataset(args, source_datasetlist)
