@@ -144,6 +144,7 @@ class Diversify(Algorithm):
             all_x = all_x.unsqueeze(1).unsqueeze(2)
         all_c = minibatches[1].cuda().long()
         all_d = minibatches[4].cuda().long()
+        all_d = all_d.clamp(min=0, max=self.args.latent_domain_num - 1)
         all_y = all_d * self.args.num_classes + all_c
 
         # Debug checks
