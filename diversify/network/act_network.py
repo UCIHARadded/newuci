@@ -7,14 +7,14 @@ import torch.nn as nn
 
 var_size = {
     'emg': {
-        'in_size': (8,),   # 8 channels
+        'in_size': 8,   # 8 channels
         'ker_size': 9,
-        'input_len': 200
+        'input_len': 32*44
     },
     'uci_har': {
-        'in_size': (1,),
+        'in_size': 9,
         'ker_size': 9,
-        'input_len': 561
+        'input_len': 32*30
     }
 }
 
