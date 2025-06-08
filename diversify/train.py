@@ -3,40 +3,27 @@
 
 import time
 import sys
-sys.path.append(".")  # Ensure current dir is included
-
+sys.path.append(".")  # Ensure current path
 from alg.opt import *
 from alg import alg, modelopera
 from utils.util import (
-    set_random_seed,
-    get_args,
-    print_row,
-    print_args,
-    train_valid_target_eval_names,
-    alg_loss_dict,
-    print_environ
+    set_random_seed, get_args, print_row, print_args,
+    train_valid_target_eval_names, alg_loss_dict, print_environ
 )
 from datautil.getdataloader_single import get_act_dataloader
-from uci_loader import get_uci_har_dataloader  # UCI loader
+from uci_loader import get_uci_har_dataloader
 
 def main(args):
     s = print_args(args, [])
     set_random_seed(args.seed)
-
     print_environ()
     print(s)
-
-    # UCI HAR-specific setting
-    if args.dataset == 'uci_har':
-        print("[INFO] Using UCI HAR dataset loader")
-        args.latent_domain_num = 1  # dummy value; HAR has no real domains
 
     if args.latent_domain_num < 6:
         args.batch_size = 32 * args.latent_domain_num
     else:
         args.batch_size = 16 * args.latent_domain_num
 
-    # Dataset loading
     if args.dataset == 'uci_har':
         train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_uci_har_dataloader(args)
     else:
@@ -44,7 +31,6 @@ def main(args):
 
     best_valid_acc, target_acc = 0, 0
 
-    # Algorithm
     algorithm_class = alg.get_algorithm_class(args.algorithm)
     algorithm = algorithm_class(args).cuda()
     algorithm.train()
@@ -72,9 +58,7 @@ def main(args):
                 loss_result_dict = algorithm.update_d(data, optd)
             print_row([step] + [loss_result_dict[item] for item in loss_list], colwidth=15)
 
-        # Only for EMG-type domain-aware datasets
-        if args.dataset != 'uci_har':
-            algorithm.set_dlabel(train_loader)
+        algorithm.set_dlabel(train_loader)
 
         print('====Domain-invariant feature learning====')
         loss_list = alg_loss_dict(args)
@@ -92,12 +76,11 @@ def main(args):
 
             results = {
                 'epoch': step,
+                'train_acc': modelopera.accuracy(algorithm, train_loader_noshuffle, None),
+                'valid_acc': modelopera.accuracy(algorithm, valid_loader, None),
+                'target_acc': modelopera.accuracy(algorithm, target_loader, None),
+                'total_cost_time': time.time() - sss
             }
-            results['train_acc'] = modelopera.accuracy(algorithm, train_loader_noshuffle, None)
-            acc = modelopera.accuracy(algorithm, valid_loader, None)
-            results['valid_acc'] = acc
-            acc = modelopera.accuracy(algorithm, target_loader, None)
-            results['target_acc'] = acc
 
             for key in loss_list:
                 results[key + '_loss'] = step_vals[key]
@@ -106,7 +89,6 @@ def main(args):
                 best_valid_acc = results['valid_acc']
                 target_acc = results['target_acc']
 
-            results['total_cost_time'] = time.time() - sss
             print_row([results[key] for key in print_key], colwidth=15)
 
     print(f'Target acc: {target_acc:.4f}')
