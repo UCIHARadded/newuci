@@ -92,7 +92,9 @@ def load_group(folder):
         X = load_file(os.path.join(folder, 'X_test.txt'))
         y = load_file(os.path.join(folder, 'y_test.txt'))
         subjects = load_file(os.path.join(folder, 'subject_test.txt'))
-    y = y.flatten() - 1    
+    y = y.flatten()
+    if y.min() == 1:
+        y = y - 1  # only subtract 1 if labels start from 1    
 
     return (
         torch.tensor(X, dtype=torch.float32),
