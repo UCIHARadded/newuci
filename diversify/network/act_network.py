@@ -23,7 +23,7 @@ class ActNetwork(nn.Module):
     def __init__(self, taskname):
         super(ActNetwork, self).__init__()
         self.taskname = taskname
-        in_ch = var_size[taskname]['in_size'][0]
+        in_ch = var_size[taskname]['in_size']
         ker_size = var_size[taskname]['ker_size']
 
         self.conv1 = nn.Sequential(
