@@ -78,7 +78,7 @@ def get_uci_har_dataloader(args):
 def load_group(folder):
     signal_type = 'train' if 'train' in folder else 'test'
 
-    # Load X.txt
+    # Load flat features
     X_flat = load_file(os.path.join(folder, f'X_{signal_type}.txt'))  # (N, 561)
 
     # Load inertial signals
@@ -91,23 +91,24 @@ def load_group(folder):
         fpath = os.path.join(folder, 'Inertial Signals', f"{name}_{signal_type}.txt")
         signal = load_file(fpath).reshape(-1, 128, 1)  # (N, 128, 1)
         inertial_signals.append(signal)
+
     X_inertial = np.concatenate(inertial_signals, axis=2)  # (N, 128, 9)
-
-    # Normalize inertial only
     X_inertial = (X_inertial - X_inertial.mean()) / (X_inertial.std() + 1e-8)
-
-    # Reshape
     X_inertial = torch.tensor(X_inertial.transpose(0, 2, 1), dtype=torch.float32).unsqueeze(2)  # (N, 9, 1, 128)
-    X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
 
-    # Fuse: concat along channels → (N, 570, 1, ?)
-    X_combined = X_inertial  # (N, 9, 1, 128)
+    # Prepare X_flat to match shape: expand (N, 561) → (N, 561, 1, 128)
+    X_flat = np.expand_dims(X_flat, axis=(2))  # (N, 561, 1)
+    X_flat = np.repeat(X_flat, 128, axis=2)    # (N, 561, 128)
+    X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2)  # (N, 561, 1, 128)
+
+    # Fuse flat + inertial along channels → (N, 570, 1, 128)
+    X_combined = torch.cat([X_flat, X_inertial], dim=1)
 
     # Load labels
     y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
-    y = y - 1 if y.min() == 1 else y  # 1-based to 0-based
+    y = y - 1 if y.min() == 1 else y  # Ensure 0-based
     s = load_file(os.path.join(folder, f'subject_{signal_type}.txt')).astype(int).flatten()
-    
+
     print(f"[DEBUG] Fused shape: {X_combined.shape} | Labels: {np.unique(y)}")
 
     return (
@@ -115,6 +116,7 @@ def load_group(folder):
         torch.tensor(y, dtype=torch.long),
         torch.tensor(s, dtype=torch.long)
     )
+
 
 
 def load_file(filepath):
