@@ -6,14 +6,14 @@ import torch.nn as nn
 
 var_size = {
     'emg': {
-        'in_size': 8,
+        'in_size': (8,),   # 8 channels
         'ker_size': 9,
-        'fc_size': 32*44
+        'input_len': 200
     },
     'uci_har': {
-        'in_size': 1,
+        'in_size': (9,),
         'ker_size': 9,
-        'fc_size': 32*68
+        'input_len': 128
     }
 }
 
@@ -36,7 +36,12 @@ class ActNetwork(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2)
         )
-        self.in_features = var_size[taskname]['fc_size']
+        # Compute the flattened feature size dynamically
+        with torch.no_grad():
+            dummy_input = torch.zeros(1, *var_size[taskname]['in_size'], 1, var_size[taskname]['input_len'])  # (B, C, 1, T)
+            dummy_out = self.conv2(self.conv1(dummy_input))
+            self.in_features = dummy_out.view(1, -1).size(1)
+
 
     def forward(self, x):
         x = self.conv2(self.conv1(x))
