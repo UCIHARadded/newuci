@@ -6,6 +6,8 @@ from alg.opt import *
 from alg import alg, modelopera
 from utils.util import set_random_seed, get_args, print_row, print_args, train_valid_target_eval_names, alg_loss_dict, print_environ
 from datautil.getdataloader_single import get_act_dataloader
+from UCI_HAR_LOADER import get_uci_har_dataloader
+
 
 
 def main(args):
@@ -19,8 +21,11 @@ def main(args):
     else:
         args.batch_size = 16*args.latent_domain_num
 
-    train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_act_dataloader(
-        args)
+    if args.dataset == 'uci_har':
+        train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_uci_har_dataloader(args)
+    else:
+        train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_act_dataloader(args)
+
 
     best_valid_acc, target_acc = 0, 0
 
