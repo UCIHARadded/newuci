@@ -63,65 +63,58 @@ def get_act_dataloader(args):
 def get_uci_har_dataloader(args):
     print("[INFO] Using UCI HAR dataset loader")
 
-    X_train_fused, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
-    X_test_fused, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
+    X_train, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
+    X_test, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
 
-    train_dataset = TensorDataset(X_train_fused, y_train, s_train, torch.zeros_like(s_train), s_train)
-    test_dataset = TensorDataset(X_test_fused, y_test, s_test, torch.zeros_like(s_test), s_test)
+    # Remap subject IDs to 0-indexed domain labels
+    unique_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
+    subject_to_domain = {sid: i for i, sid in enumerate(unique_subjects)}
+
+    s_train = torch.tensor([subject_to_domain[int(s)] for s in s_train], dtype=torch.long)
+    s_test = torch.tensor([subject_to_domain[int(s)] for s in s_test], dtype=torch.long)
+
+    # Concatenate original + inertial data
+    X_combined_train = fuse_signals(args, 'train')
+    X_combined_test = fuse_signals(args, 'test')
+
+    train_dataset = TensorDataset(X_combined_train, y_train, s_train, torch.zeros_like(s_train), s_train)
+    test_dataset = TensorDataset(X_combined_test, y_test, s_test, torch.zeros_like(s_test), s_test)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
-    
-    unique_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
-    subject_to_domain = {sid: i for i, sid in enumerate(unique_subjects)}
-    s_train = torch.tensor([subject_to_domain[int(s)] for s in s_train], dtype=torch.long)
-    s_test = torch.tensor([subject_to_domain[int(s)] for s in s_test], dtype=torch.long)
 
     return train_loader, train_loader, test_loader, test_loader, train_dataset, test_dataset, test_dataset
 
 
-def load_group(folder):
-    signal_type = 'train' if 'train' in folder else 'test'
+def fuse_signals(args, split):
+    folder = os.path.join(args.data_dir, split)
+    X_flat = load_file(os.path.join(folder, f'X_{split}.txt'))  # (N, 561)
+    X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
 
-    # Load flat features
-    X_flat = load_file(os.path.join(folder, f'X_{signal_type}.txt'))  # (N, 561)
-
-    # Load inertial signals
     inertial_signals = []
     for name in [
         'body_acc_x', 'body_acc_y', 'body_acc_z',
         'body_gyro_x', 'body_gyro_y', 'body_gyro_z',
-        'total_acc_x', 'total_acc_y', 'total_acc_z'
-    ]:
-        fpath = os.path.join(folder, 'Inertial Signals', f"{name}_{signal_type}.txt")
-        signal = load_file(fpath).reshape(-1, 128, 1)  # (N, 128, 1)
-        inertial_signals.append(signal)
-
+        'total_acc_x', 'total_acc_y', 'total_acc_z']:
+        fpath = os.path.join(folder, 'Inertial Signals', f"{name}_{split}.txt")
+        sig = load_file(fpath).reshape(-1, 128, 1)
+        inertial_signals.append(sig)
     X_inertial = np.concatenate(inertial_signals, axis=2)  # (N, 128, 9)
     X_inertial = (X_inertial - X_inertial.mean()) / (X_inertial.std() + 1e-8)
     X_inertial = torch.tensor(X_inertial.transpose(0, 2, 1), dtype=torch.float32).unsqueeze(2)  # (N, 9, 1, 128)
 
-    # Prepare X_flat to match shape: expand (N, 561) → (N, 561, 1, 128)
-    X_flat = np.expand_dims(X_flat, axis=(2))  # (N, 561, 1)
-    X_flat = np.repeat(X_flat, 128, axis=2)    # (N, 561, 128)
-    X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2)  # (N, 561, 1, 128)
+    # Expand flat to match temporal dim
+    X_flat = X_flat.expand(-1, -1, 1, 128)  # (N, 561, 1, 128)
 
-    # Fuse flat + inertial along channels → (N, 570, 1, 128)
-    X_combined = torch.cat([X_flat, X_inertial], dim=1)
+    return torch.cat([X_flat, X_inertial], dim=1)  # (N, 570, 1, 128)
 
-    # Load labels
+
+def load_group(folder):
+    signal_type = 'train' if 'train' in folder else 'test'
     y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
-    y = y - 1 if y.min() == 1 else y  # Ensure 0-based
+    y = y - 1 if y.min() == 1 else y
     s = load_file(os.path.join(folder, f'subject_{signal_type}.txt')).astype(int).flatten()
-
-    print(f"[DEBUG] Fused shape: {X_combined.shape} | Labels: {np.unique(y)}")
-
-    return (
-        X_combined,
-        torch.tensor(y, dtype=torch.long),
-        torch.tensor(s, dtype=torch.long)
-    )
-
+    return None, torch.tensor(y, dtype=torch.long), torch.tensor(s, dtype=torch.long)
 
 
 def load_file(filepath):
