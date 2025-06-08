@@ -17,9 +17,9 @@ from loss.common_loss import Entropylogits
 class Diversify(Algorithm):
 
     def __init__(self, args):
-
         super(Diversify, self).__init__(args)
         self.featurizer = get_fea(args)
+
         self.dbottleneck = common_network.feat_bottleneck(
             self.featurizer.in_features, args.bottleneck, args.layer)
         self.ddiscriminator = Adver_network.Discriminator(
@@ -34,11 +34,12 @@ class Diversify(Algorithm):
             self.featurizer.in_features, args.bottleneck, args.layer)
 
         self.aclassifier = common_network.feat_classifier(
-            args.num_classes*args.latent_domain_num, args.bottleneck, args.classifier)
+            args.num_classes * args.latent_domain_num, args.bottleneck, args.classifier)
         self.dclassifier = common_network.feat_classifier(
             args.latent_domain_num, args.bottleneck, args.classifier)
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
+
         self.args = args
 
     def update_d(self, minibatch, opt):
@@ -47,17 +48,21 @@ class Diversify(Algorithm):
             all_x1 = all_x1.unsqueeze(1).unsqueeze(2)
         all_d1 = minibatch[1].cuda().long()
         all_c1 = minibatch[4].cuda().long()
+
         z1 = self.dbottleneck(self.featurizer(all_x1))
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
         disc_loss = F.cross_entropy(disc_out1, all_d1, reduction='mean')
+
         cd1 = self.dclassifier(z1)
-        ent_loss = Entropylogits(cd1)*self.args.lam + \
+        ent_loss = Entropylogits(cd1) * self.args.lam + \
             F.cross_entropy(cd1, all_c1)
-        loss = ent_loss+disc_loss
+
+        loss = ent_loss + disc_loss
         opt.zero_grad()
         loss.backward()
         opt.step()
+
         return {'total': loss.item(), 'dis': disc_loss.item(), 'ent': ent_loss.item()}
 
     def set_dlabel(self, loader):
@@ -75,6 +80,7 @@ class Diversify(Algorithm):
                 index = data[-1]
                 feas = self.dbottleneck(self.featurizer(inputs))
                 outputs = self.dclassifier(feas)
+
                 if start_test:
                     all_fea = feas.float().cpu()
                     all_output = outputs.float().cpu()
@@ -82,11 +88,10 @@ class Diversify(Algorithm):
                     start_test = False
                 else:
                     all_fea = torch.cat((all_fea, feas.float().cpu()), 0)
-                    all_output = torch.cat(
-                        (all_output, outputs.float().cpu()), 0)
+                    all_output = torch.cat((all_output, outputs.float().cpu()), 0)
                     all_index = np.hstack((all_index, index))
-        all_output = nn.Softmax(dim=1)(all_output)
 
+        all_output = nn.Softmax(dim=1)(all_output)
         all_fea = torch.cat((all_fea, torch.ones(all_fea.size(0), 1)), 1)
         all_fea = (all_fea.t() / torch.norm(all_fea, p=2, dim=1)).t()
         all_fea = all_fea.float().cpu().numpy()
@@ -107,6 +112,7 @@ class Diversify(Algorithm):
 
         loader.dataset.set_labels_by_index(pred_label, all_index, 'pdlabel')
         print(Counter(pred_label))
+
         self.dbottleneck.train()
         self.dclassifier.train()
         self.featurizer.train()
@@ -114,39 +120,57 @@ class Diversify(Algorithm):
     def update(self, data, opt):
         all_x = data[0].cuda().float()
         if all_x.dim() == 2:
-            all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
+            all_x = all_x.unsqueeze(1).unsqueeze(2)
         all_y = data[1].cuda().long()
         all_z = self.bottleneck(self.featurizer(all_x))
 
-        disc_input = all_z
-        disc_input = Adver_network.ReverseLayerF.apply(
-            disc_input, self.args.alpha)
+        disc_input = Adver_network.ReverseLayerF.apply(all_z, self.args.alpha)
         disc_out = self.discriminator(disc_input)
         disc_labels = data[4].cuda().long()
-
         disc_loss = F.cross_entropy(disc_out, disc_labels)
+
         all_preds = self.classifier(all_z)
         classifier_loss = F.cross_entropy(all_preds, all_y)
-        loss = classifier_loss+disc_loss
+        loss = classifier_loss + disc_loss
         opt.zero_grad()
         loss.backward()
         opt.step()
+
         return {'total': loss.item(), 'class': classifier_loss.item(), 'dis': disc_loss.item()}
 
     def update_a(self, minibatches, opt):
         all_x = minibatches[0].cuda().float()
         if all_x.dim() == 2:
-            all_x = all_x.unsqueeze(1).unsqueeze(2)   # <-- Add this line here
+            all_x = all_x.unsqueeze(1).unsqueeze(2)
         all_c = minibatches[1].cuda().long()
         all_d = minibatches[4].cuda().long()
-        all_y = all_d*self.args.num_classes+all_c
+        all_y = all_d * self.args.num_classes + all_c
+
+        # Debug checks
+        total_classes = self.args.num_classes * self.args.latent_domain_num
+        print("=== DEBUG: Class Label Check in update_a ===")
+        print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
+        print("Expected total_classes:", total_classes)
+        assert all_y.min() >= 0, "Label contains negative index!"
+        assert all_y.max() < total_classes, f"Label max {all_y.max().item()} exceeds total classes {total_classes}"
+
         all_z = self.abottleneck(self.featurizer(all_x))
         all_preds = self.aclassifier(all_z)
-        classifier_loss = F.cross_entropy(all_preds, all_y)
+
+        try:
+            classifier_loss = F.cross_entropy(all_preds, all_y)
+        except RuntimeError as e:
+            print("Cross entropy error! Shape mismatch?")
+            print("all_preds.shape:", all_preds.shape)
+            print("all_y.shape:", all_y.shape)
+            print("all_y.unique():", all_y.unique())
+            raise e
+
         loss = classifier_loss
         opt.zero_grad()
         loss.backward()
         opt.step()
+
         return {'class': classifier_loss.item()}
 
     def predict(self, x):
@@ -154,3 +178,4 @@ class Diversify(Algorithm):
 
     def predict1(self, x):
         return self.ddiscriminator(self.dbottleneck(self.featurizer(x)))
+
