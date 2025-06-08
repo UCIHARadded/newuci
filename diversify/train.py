@@ -8,7 +8,7 @@ from utils.util import set_random_seed, get_args, print_row, print_args, train_v
 from datautil.getdataloader_single import get_act_dataloader
 import sys
 sys.path.append(".")  # Force look in current directory
-from uci_har_loader import get_uci_har_dataloader
+from uci_loader import get_uci_har_dataloader
 
 
 
