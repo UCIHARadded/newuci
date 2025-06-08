@@ -23,14 +23,14 @@ class ActNetwork(nn.Module):
         super(ActNetwork, self).__init__()
         self.taskname = taskname
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=var_size[taskname]['in_size'], out_channels=16, kernel_size=(
+            nn.Conv2d(in_channels=var_size[taskname]['in_size'][0], out_channels=16, kernel_size=(
                 1, var_size[taskname]['ker_size'])),
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2)
         )
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(
+            nn.Conv2d(in_channels=var_size[taskname]['in_size'][0], out_channels=32, kernel_size=(
                 1, var_size[taskname]['ker_size'])),
             nn.BatchNorm2d(32),
             nn.ReLU(),
