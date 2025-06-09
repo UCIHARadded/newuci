@@ -23,14 +23,12 @@ class feat_bottleneck(nn.Module):
 
 
 class feat_classifier(nn.Module):
-    def __init__(self, args):
+    def __init__(self, input_dim, num_classes, args):
         super().__init__()
         self.args = args
-        C, H, W = args.input_shape  # Get shape from args
-        input_dim = C * H * W       # Compute flat input size
+        self.fc = nn.Linear(input_dim, num_classes)
 
-        self.fc = nn.Linear(input_dim, args.domain_num)
-    
     def forward(self, x):
         x = x.view(x.size(0), -1)
         return self.fc(x)
+
