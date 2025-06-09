@@ -142,4 +142,5 @@ def get_args():
     sys.stdout = Tee(os.path.join(args.output, 'out.txt'))
     sys.stderr = Tee(os.path.join(args.output, 'err.txt'))
     args = act_param_init(args)
+    args.num_classes = 6
     return args
