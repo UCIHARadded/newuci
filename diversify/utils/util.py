@@ -134,11 +134,11 @@ def get_args():
     parser.add_argument('--test_envs', type=int, nargs='+', default=[0])
     parser.add_argument('--output', type=str, default="train_output")
     parser.add_argument('--weight_decay', type=float, default=5e-4)
+
+    args = parser.parse_args()
     # Set dynamically based on UCI-HAR total subjects
     if args.dataset == 'uci_har':
         args.domain_num = 30  # There are 30 subjects in total in UCI HAR
-
-    args = parser.parse_args()
     args.steps_per_epoch = 10000000000
     args.data_dir = args.data_file + args.data_dir
     os.environ['CUDA_VISIBLE_DEVICS'] = args.gpu_id
