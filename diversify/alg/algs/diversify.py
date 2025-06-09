@@ -139,25 +139,25 @@ class Diversify(Algorithm):
         return {'total': loss.item(), 'class': classifier_loss.item(), 'dis': disc_loss.item()}
 
     def update_a(self, minibatches, opt):
-    all_x = minibatches[0].cuda().float()
-    all_c = minibatches[1].cuda().long()  # activity labels
-    all_d = minibatches[4].cuda().long()  # domain IDs
-    all_y = all_d * self.args.num_classes + all_c
+        all_x = minibatches[0].cuda().float()
+        all_c = minibatches[1].cuda().long()  # activity labels
+        all_d = minibatches[4].cuda().long()  # domain IDs
+        all_y = all_d * self.args.num_classes + all_c
 
-    print("=== DEBUG: Class Label Check in update_a ===")
-    print(f"all_y.min(): {all_y.min().item()}  | all_y.max(): {all_y.max().item()}")
-    print(f"Expected total_classes: {self.args.num_classes}")
+        print("=== DEBUG: Class Label Check in update_a ===")
+        print(f"all_y.min(): {all_y.min().item()}  | all_y.max(): {all_y.max().item()}")
+        print(f"Expected total_classes: {self.args.num_classes}")
 
-    assert all_c.max().item() < self.args.num_classes, f"Label out of range: max={all_c.max().item()}"
-    assert all_c.min().item() >= 0, "Label contains negative index!"
+        assert all_c.max().item() < self.args.num_classes, f"Label out of range: max={all_c.max().item()}"
+        assert all_c.min().item() >= 0, "Label contains negative index!"
 
-    all_z = self.abottleneck(self.featurizer(all_x))
-    all_preds = self.aclassifier(all_z)
-    classifier_loss = F.cross_entropy(all_preds, all_y)
-    opt.zero_grad()
-    classifier_loss.backward()
-    opt.step()
-    return {'class': classifier_loss.item()}
+        all_z = self.abottleneck(self.featurizer(all_x))
+        all_preds = self.aclassifier(all_z)
+        classifier_loss = F.cross_entropy(all_preds, all_y)
+        opt.zero_grad()
+        classifier_loss.backward()
+        opt.step()
+        return {'class': classifier_loss.item()}
 
 
     def predict(self, x):
