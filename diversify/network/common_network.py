@@ -30,7 +30,7 @@ class feat_classifier(nn.Module):
             self.fc = weightNorm(
                 nn.Linear(bottleneck_dim, class_num), name="weight")
         else:
-            self.fc = nn.Linear(bottleneck_dim, class_num)
+            self.fc = nn.Linear(input_dim, self.args.domain_num)
 
     def forward(self, x):
         x = self.fc(x)
