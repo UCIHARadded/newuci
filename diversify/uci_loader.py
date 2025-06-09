@@ -5,7 +5,6 @@ import os
 
 import datautil.actdata.util as actutil
 from datautil.util import combindataset, subdataset
-
 import datautil.actdata.cross_people as cross_people
 
 task_act = {'cross_people': cross_people}
@@ -40,16 +39,17 @@ def get_act_dataloader(args):
             target_datalist.append(tdata)
         else:
             source_datasetlist.append(tdata)
-            if len(tdata)/args.batch_size < args.steps_per_epoch:
-                args.steps_per_epoch = len(tdata)/args.batch_size
+            if len(tdata) / args.batch_size < args.steps_per_epoch:
+                args.steps_per_epoch = len(tdata) / args.batch_size
+
     rate = 0.2
-    args.steps_per_epoch = int(args.steps_per_epoch*(1-rate))
+    args.steps_per_epoch = int(args.steps_per_epoch * (1 - rate))
     tdata = combindataset(args, source_datasetlist)
     l = len(tdata.labels)
     indexall = np.arange(l)
     np.random.seed(args.seed)
     np.random.shuffle(indexall)
-    ted = int(l*rate)
+    ted = int(l * rate)
     indextr, indexval = indexall[ted:], indexall[:ted]
     tr = subdataset(args, tdata, indextr)
     val = subdataset(args, tdata, indexval)
@@ -63,22 +63,19 @@ def get_act_dataloader(args):
 def get_uci_har_dataloader(args):
     print("[INFO] Using UCI HAR dataset loader")
 
-    X_train, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'))
-    X_test, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'))
+    # Load raw features and labels
+    X_train, y_train, s_train = load_group(os.path.join(args.data_dir, 'train'), args)
+    X_test, y_test, s_test = load_group(os.path.join(args.data_dir, 'test'), args)
 
-    # Remap subject IDs to 0-indexed domain labels
-    unique_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
-    subject_to_domain = {sid: i for i, sid in enumerate(unique_subjects)}
+    # Remap subject IDs to domain indices
+    all_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
+    sid2domain = {sid: i for i, sid in enumerate(all_subjects)}
 
-    s_train = torch.tensor([subject_to_domain[int(s)] for s in s_train], dtype=torch.long)
-    s_test = torch.tensor([subject_to_domain[int(s)] for s in s_test], dtype=torch.long)
+    s_train = torch.tensor([sid2domain[int(s)] for s in s_train], dtype=torch.long)
+    s_test = torch.tensor([sid2domain[int(s)] for s in s_test], dtype=torch.long)
 
-    # Concatenate original + inertial data
-    X_combined_train = fuse_signals(args, 'train')
-    X_combined_test = fuse_signals(args, 'test')
-
-    train_dataset = TensorDataset(X_combined_train, y_train, s_train, torch.zeros_like(s_train), s_train)
-    test_dataset = TensorDataset(X_combined_test, y_test, s_test, torch.zeros_like(s_test), s_test)
+    train_dataset = TensorDataset(X_train, y_train, s_train, torch.zeros_like(s_train), s_train)
+    test_dataset = TensorDataset(X_test, y_test, s_test, torch.zeros_like(s_test), s_test)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.N_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.N_WORKERS)
@@ -86,13 +83,27 @@ def get_uci_har_dataloader(args):
     return train_loader, train_loader, test_loader, test_loader, train_dataset, test_dataset, test_dataset
 
 
+def load_group(folder, args):
+    split = 'train' if 'train' in folder else 'test'
+    X = fuse_signals(args, split, folder=folder)
+
+    y = load_file(os.path.join(folder, f'y_{split}.txt')).astype(int).flatten()
+    if y.min() == 1:
+        y -= 1  # convert 1-indexed to 0-indexed
+    s = load_file(os.path.join(folder, f'subject_{split}.txt')).astype(int).flatten()
+
+    return X, torch.tensor(y, dtype=torch.long), torch.tensor(s, dtype=torch.long)
+
+
 def fuse_signals(args, split, folder=None):
     if folder is None:
         folder = os.path.join(args.data_dir, split)
 
-    X_flat = load_file(os.path.join(folder, f'X_{split}.txt'))  # (N, 561)
+    # Main feature vector: (N, 561)
+    X_flat = load_file(os.path.join(folder, f'X_{split}.txt'))
     X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
 
+    # Inertial Signals: each (N, 128)
     inertial_signals = []
     for name in [
         'body_acc_x', 'body_acc_y', 'body_acc_z',
@@ -102,28 +113,16 @@ def fuse_signals(args, split, folder=None):
         sig = load_file(fpath).reshape(-1, 128, 1)
         inertial_signals.append(sig)
 
+    # Normalize and reshape inertial data
     X_inertial = np.concatenate(inertial_signals, axis=2)  # (N, 128, 9)
     X_inertial = (X_inertial - X_inertial.mean()) / (X_inertial.std() + 1e-8)
     X_inertial = torch.tensor(X_inertial.transpose(0, 2, 1), dtype=torch.float32).unsqueeze(2)  # (N, 9, 1, 128)
 
-    X_flat = X_flat.expand(-1, -1, 1, 128)  # (N, 561, 1, 128)
+    # Expand flat to match time steps (N, 561, 1, 128)
+    X_flat = X_flat.expand(-1, -1, 1, 128)
 
-    return torch.cat([X_flat, X_inertial], dim=1)  # (N, 570, 1, 128)
-
-
-
-def load_group(folder):
-    signal_type = 'train' if 'train' in folder else 'test'
-
-    X_combined = fuse_signals(None, signal_type, folder=folder)  # 🆕 pass folder explicitly
-
-    y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
-    y = y - 1 if y.min() == 1 else y
-
-    s = load_file(os.path.join(folder, f'subject_{signal_type}.txt')).astype(int).flatten()
-
-    return X_combined, torch.tensor(y, dtype=torch.long), torch.tensor(s, dtype=torch.long)
-
+    # Final fused shape: (N, 570, 1, 128)
+    return torch.cat([X_flat, X_inertial], dim=1)
 
 
 def load_file(filepath):
