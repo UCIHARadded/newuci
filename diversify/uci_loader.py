@@ -86,8 +86,10 @@ def get_uci_har_dataloader(args):
     return train_loader, train_loader, test_loader, test_loader, train_dataset, test_dataset, test_dataset
 
 
-def fuse_signals(args, split):
-    folder = os.path.join(args.data_dir, split)
+def fuse_signals(args, split, folder=None):
+    if folder is None:
+        folder = os.path.join(args.data_dir, split)
+
     X_flat = load_file(os.path.join(folder, f'X_{split}.txt'))  # (N, 561)
     X_flat = torch.tensor(X_flat, dtype=torch.float32).unsqueeze(2).unsqueeze(2)  # (N, 561, 1, 1)
 
@@ -99,22 +101,29 @@ def fuse_signals(args, split):
         fpath = os.path.join(folder, 'Inertial Signals', f"{name}_{split}.txt")
         sig = load_file(fpath).reshape(-1, 128, 1)
         inertial_signals.append(sig)
+
     X_inertial = np.concatenate(inertial_signals, axis=2)  # (N, 128, 9)
     X_inertial = (X_inertial - X_inertial.mean()) / (X_inertial.std() + 1e-8)
     X_inertial = torch.tensor(X_inertial.transpose(0, 2, 1), dtype=torch.float32).unsqueeze(2)  # (N, 9, 1, 128)
 
-    # Expand flat to match temporal dim
     X_flat = X_flat.expand(-1, -1, 1, 128)  # (N, 561, 1, 128)
 
     return torch.cat([X_flat, X_inertial], dim=1)  # (N, 570, 1, 128)
 
 
+
 def load_group(folder):
     signal_type = 'train' if 'train' in folder else 'test'
+
+    X_combined = fuse_signals(None, signal_type, folder=folder)  # 🆕 pass folder explicitly
+
     y = load_file(os.path.join(folder, f'y_{signal_type}.txt')).astype(int).flatten()
     y = y - 1 if y.min() == 1 else y
+
     s = load_file(os.path.join(folder, f'subject_{signal_type}.txt')).astype(int).flatten()
-    return None, torch.tensor(y, dtype=torch.long), torch.tensor(s, dtype=torch.long)
+
+    return X_combined, torch.tensor(y, dtype=torch.long), torch.tensor(s, dtype=torch.long)
+
 
 
 def load_file(filepath):
