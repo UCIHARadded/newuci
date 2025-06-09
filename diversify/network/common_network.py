@@ -23,15 +23,14 @@ class feat_bottleneck(nn.Module):
 
 
 class feat_classifier(nn.Module):
-    def __init__(self, class_num, bottleneck_dim=256, type="linear"):
-        super(feat_classifier, self).__init__()
-        self.type = type
-        if type == 'wn':
-            self.fc = weightNorm(
-                nn.Linear(bottleneck_dim, class_num), name="weight")
-        else:
-            self.fc = nn.Linear(input_dim, self.args.domain_num)
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+        C, H, W = args.input_shape  # Get shape from args
+        input_dim = C * H * W       # Compute flat input size
 
+        self.fc = nn.Linear(input_dim, args.domain_num)
+    
     def forward(self, x):
-        x = self.fc(x)
-        return x
+        x = x.view(x.size(0), -1)
+        return self.fc(x)
