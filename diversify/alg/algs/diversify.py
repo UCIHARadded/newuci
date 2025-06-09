@@ -60,6 +60,11 @@ class Diversify(Algorithm):
         disc_loss = F.cross_entropy(disc_out1, all_d1, reduction='mean')
 
         cd1 = self.dclassifier(z1)
+        print(f"=== DEBUG: Domain Label Check in update_d ===")
+        print(f"all_d.min(): {all_d.min().item()}  | all_d.max(): {all_d.max().item()}")
+        print(f"Expected domain_num: {self.args.domain_num}")
+        assert all_d.max() < self.args.domain_num, f"Found domain label {all_d.max().item()} >= domain_num"
+
         ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d)
 
         loss = ent_loss + disc_loss
