@@ -20,21 +20,27 @@ class Diversify(Algorithm):
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.ddiscriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.num_classes)
-
+        
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.classifier = common_network.feat_classifier(args.bottleneck, args.num_classes)
-
+        
         self.abottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
-
-        # Temporarily assign None — will initialize in first update_d() call
-        self.dclassifier = None
+        
+        # ✅ Initialize dclassifier via dummy forward pass
+        dummy_x = torch.randn(2, *args.input_shape).cuda()
+        with torch.no_grad():
+            dummy_z1 = self.dbottleneck(self.featurizer(dummy_x))
+            z1_dim = dummy_z1.shape[1]
+            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num).cuda()
+        
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
-
+        
         self.args = args
+
         self.dclassifier_initialized = False
 
     def update_d(self, minibatch, opt):
