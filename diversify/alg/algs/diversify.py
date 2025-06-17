@@ -33,12 +33,13 @@ class Diversify(Algorithm):
         from uci_loader import get_uci_har_dataloader
         sample_loader = get_uci_har_dataloader(args)[0]  # train_loader
         batch = next(iter(sample_loader))
-        sample_x = batch[0].cuda().float()
+        sample_x = batch[0].float()  # ✅ keep on CPU since model is on CPU during init
         
         with torch.no_grad():
             dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
             z1_dim = dummy_z1.shape[1]
-            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num).cuda()
+            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num)
+
         
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
