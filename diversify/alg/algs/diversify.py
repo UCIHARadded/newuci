@@ -29,16 +29,18 @@ class Diversify(Algorithm):
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
 
-        self.dclassifier = common_network.feat_classifier(args.bottleneck, args.latent_domain_num)
+        # Temporarily assign None — will initialize in first update_d() call
+        self.dclassifier = None
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
 
         self.args = args
+        self.dclassifier_initialized = False
 
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
-        all_c1 = minibatch[1].cuda().long()  # class label
-        all_d1 = minibatch[2].cuda().long()  # domain/person ID
+        all_c1 = minibatch[1].cuda().long()
+        all_d1 = minibatch[2].cuda().long()
 
         if all_c1.min() < 0 or all_c1.max() >= self.args.num_classes:
             print("=== [ERROR] Invalid class label in update_d ===")
@@ -48,6 +50,17 @@ class Diversify(Algorithm):
             raise ValueError("Invalid class labels for cross_entropy in update_d()")
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
+
+        # ✅ Dynamically initialize dclassifier the first time we see z1
+        if not self.dclassifier_initialized:
+            z1_dim = z1.shape[1]
+            self.dclassifier = common_network.feat_classifier(z1_dim, self.args.latent_domain_num).cuda()
+            self.dclassifier_initialized = True
+            print(f"[INIT] dclassifier initialized with input dim: {z1_dim}")
+
+        # Debug check
+        assert z1.shape[1] == self.dclassifier.fc.in_features, f"Shape mismatch: z1={z1.shape[1]} vs fc.in={self.dclassifier.fc.in_features}"
+
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
         disc_loss = F.cross_entropy(disc_out1, all_d1, reduction='mean')
@@ -130,9 +143,8 @@ class Diversify(Algorithm):
         all_x = minibatches[0].cuda().float()
         all_c = minibatches[1].cuda().long()
         all_d = minibatches[2].cuda().long()
-        all_d = all_d % self.args.latent_domain_num  # ✅ clamp domain to known latent range
+        all_d = all_d % self.args.latent_domain_num
         all_y = all_d * self.args.num_classes + all_c
-
 
         print("=== DEBUG: Class Label Check in update_a ===")
         print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
