@@ -77,7 +77,15 @@ class Diversify(Algorithm):
         disc_loss = F.cross_entropy(disc_out1, all_d1, reduction='mean')
 
         cd1 = self.dclassifier(z1)
+
+        if all_d1.min() < 0 or all_d1.max() >= self.args.latent_domain_num:
+            print("🔥 [ERROR] update_d got domain label out of range!")
+            print("all_d1.min():", all_d1.min().item(), " all_d1.max():", all_d1.max().item())
+            print("Expected label range: 0 to", self.args.latent_domain_num - 1)
+            raise ValueError("Domain label out of range for dclassifier!")
+        
         ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
+
 
         loss = ent_loss + disc_loss
         opt.zero_grad()
