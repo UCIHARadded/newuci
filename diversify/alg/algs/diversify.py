@@ -19,7 +19,7 @@ class Diversify(Algorithm):
         self.dbottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.ddiscriminator = Adver_network.Discriminator(
-            args.bottleneck, args.dis_hidden, args.num_classes)
+            args.bottleneck, args.dis_hidden, args.latent_domain_num)
 
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
@@ -29,15 +29,11 @@ class Diversify(Algorithm):
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
 
-        # ✅ Initialize dclassifier via dummy forward pass
-        from uci_loader import get_uci_har_dataloader
-        sample_loader = get_uci_har_dataloader(args)[0]  # train_loader
-        batch = next(iter(sample_loader))
-        sample_x = batch[0].float()
+        dummy_input = torch.randn(2, *args.input_shape)  # [B, C, H, W] or [B, F, T]
         with torch.no_grad():
-            dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
-            z1_dim = dummy_z1.shape[1]
-            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num)
+            dummy_feat = self.featurizer(dummy_input)
+            dummy_z = self.dbottleneck(dummy_feat)
+            self.dclassifier = common_network.feat_classifier(dummy_z.shape[1], args.latent_domain_num)
 
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
@@ -47,16 +43,26 @@ class Diversify(Algorithm):
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
-        all_d1 = minibatch[2].cuda().long()
-        all_d1 = all_d1 % self.args.latent_domain_num
-        assert all_d1.max() < self.args.latent_domain_num
+        all_d1 = minibatch[2].cuda().long() % self.args.latent_domain_num
+
+        assert all_d1.min() >= 0 and all_d1.max() < self.args.latent_domain_num, \
+            f"[ERROR] Invalid all_d1: {all_d1.min()} to {all_d1.max()}"
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
+
+        # === Disc prediction ===
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
+        assert disc_out1.shape[1] == self.args.latent_domain_num, \
+            f"ddiscriminator output: {disc_out1.shape[1]} vs latent: {self.args.latent_domain_num}"
+
         disc_loss = F.cross_entropy(disc_out1, all_d1)
 
+        # === DClassifier ===
         cd1 = self.dclassifier(z1)
+        assert cd1.shape[1] == self.args.latent_domain_num, \
+            f"dclassifier output: {cd1.shape[1]} vs latent: {self.args.latent_domain_num}"
+
         ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
 
         loss = ent_loss + disc_loss
@@ -66,51 +72,26 @@ class Diversify(Algorithm):
 
         return {'total': loss.item(), 'dis': disc_loss.item(), 'ent': ent_loss.item()}
 
-    def set_dlabel(self, loader):
-        self.dbottleneck.eval()
-        self.dclassifier.eval()
-        self.featurizer.eval()
+    def update_a(self, minibatches, opt):
+        all_x = minibatches[0].cuda().float()
+        all_c = minibatches[1].cuda().long()
+        all_d = minibatches[2].cuda().long() % self.args.latent_domain_num
+        all_y = all_d * self.args.num_classes + all_c
 
-        start_test = True
-        with torch.no_grad():
-            iter_test = iter(loader)
-            for _ in range(len(loader)):
-                data = next(iter_test)
-                inputs = data[0].cuda().float()
-                index = data[-1]
-                feas = self.dbottleneck(self.featurizer(inputs))
-                outputs = self.dclassifier(feas)
-                if start_test:
-                    all_fea = feas.float().cpu()
-                    all_output = outputs.float().cpu()
-                    all_index = index
-                    start_test = False
-                else:
-                    all_fea = torch.cat((all_fea, feas.float().cpu()), 0)
-                    all_output = torch.cat((all_output, outputs.float().cpu()), 0)
-                    all_index = np.hstack((all_index, index))
+        print("=== DEBUG: Class Label Check in update_a ===")
+        print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
+        print("Expected total_classes:", self.args.num_classes * self.args.latent_domain_num)
 
-        all_output = nn.Softmax(dim=1)(all_output)
-        all_fea = torch.cat((all_fea, torch.ones(all_fea.size(0), 1)), 1)
-        all_fea = (all_fea.t() / torch.norm(all_fea, p=2, dim=1)).t().cpu().numpy()
+        all_z = self.abottleneck(self.featurizer(all_x))
+        all_preds = self.aclassifier(all_z)
 
-        K = all_output.size(1)
-        aff = all_output.numpy()
-        initc = aff.T.dot(all_fea) / (1e-8 + aff.sum(axis=0)[:, None])
-        dd = cdist(all_fea, initc, 'cosine')
-        pred_label = dd.argmin(axis=1)
+        classifier_loss = F.cross_entropy(all_preds, all_y)
 
-        for _ in range(1):
-            aff = np.eye(K)[pred_label]
-            initc = aff.T.dot(all_fea) / (1e-8 + aff.sum(axis=0)[:, None])
-            dd = cdist(all_fea, initc, 'cosine')
-            pred_label = dd.argmin(axis=1)
+        opt.zero_grad()
+        classifier_loss.backward()
+        opt.step()
 
-        loader.dataset.set_labels_by_index(pred_label, all_index, 'pdlabel')
-        print(Counter(pred_label))
-        self.dbottleneck.train()
-        self.dclassifier.train()
-        self.featurizer.train()
+        return {'class': classifier_loss.item()}
 
     def update(self, data, opt):
         all_x = data[0].cuda().float()
@@ -129,28 +110,54 @@ class Diversify(Algorithm):
         opt.zero_grad()
         loss.backward()
         opt.step()
+
         return {'total': loss.item(), 'class': classifier_loss.item(), 'dis': disc_loss.item()}
 
-    def update_a(self, minibatches, opt):
-        all_x = minibatches[0].cuda().float()
-        all_c = minibatches[1].cuda().long()
-        all_d = minibatches[2].cuda().long()
-        all_d = all_d % self.args.latent_domain_num
-        all_y = all_d * self.args.num_classes + all_c
+    def set_dlabel(self, loader):
+        self.dbottleneck.eval()
+        self.dclassifier.eval()
+        self.featurizer.eval()
 
-        print("=== DEBUG: Class Label Check in update_a ===")
-        print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
-        print("Expected total_classes:", self.args.num_classes * self.args.latent_domain_num)
-        assert all_y.min() >= 0, "Label contains negative index!"
+        start_test = True
+        with torch.no_grad():
+            for data in loader:
+                inputs = data[0].cuda().float()
+                index = data[-1]
+                feas = self.dbottleneck(self.featurizer(inputs))
+                outputs = self.dclassifier(feas)
 
-        all_z = self.abottleneck(self.featurizer(all_x))
-        all_preds = self.aclassifier(all_z)
-        classifier_loss = F.cross_entropy(all_preds, all_y)
+                if start_test:
+                    all_fea = feas.cpu()
+                    all_output = outputs.cpu()
+                    all_index = index
+                    start_test = False
+                else:
+                    all_fea = torch.cat((all_fea, feas.cpu()), 0)
+                    all_output = torch.cat((all_output, outputs.cpu()), 0)
+                    all_index = np.hstack((all_index, index))
 
-        opt.zero_grad()
-        classifier_loss.backward()
-        opt.step()
-        return {'class': classifier_loss.item()}
+        all_output = nn.Softmax(dim=1)(all_output)
+        all_fea = torch.cat((all_fea, torch.ones(all_fea.size(0), 1)), 1)
+        all_fea = (all_fea.t() / torch.norm(all_fea, p=2, dim=1)).t().numpy()
+
+        K = all_output.size(1)
+        aff = all_output.numpy()
+        initc = aff.T.dot(all_fea) / (1e-8 + aff.sum(axis=0)[:, None])
+        dd = cdist(all_fea, initc, 'cosine')
+        pred_label = dd.argmin(axis=1)
+
+        for _ in range(1):
+            aff = np.eye(K)[pred_label]
+            initc = aff.T.dot(all_fea) / (1e-8 + aff.sum(axis=0)[:, None])
+            dd = cdist(all_fea, initc, 'cosine')
+            pred_label = dd.argmin(axis=1)
+
+        loader.dataset.set_labels_by_index(pred_label, all_index, 'pdlabel')
+        print(Counter(pred_label))
+
+        self.dbottleneck.train()
+        self.dclassifier.train()
+        self.featurizer.train()
 
     def predict(self, x):
         return self.classifier(self.bottleneck(self.featurizer(x)))
