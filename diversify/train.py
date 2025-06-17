@@ -20,7 +20,6 @@ from utils.util import (
 from datautil.getdataloader_single import get_act_dataloader
 from uci_loader import get_uci_har_dataloader
 
-
 def main(args):
     s = print_args(args, [])
     set_random_seed(args.seed)
@@ -28,18 +27,14 @@ def main(args):
     print_environ()
     print(s)
 
-    # Set appropriate batch size based on latent domains
     if args.latent_domain_num < 6:
         args.batch_size = 32 * args.latent_domain_num
     else:
         args.batch_size = 16 * args.latent_domain_num
 
-    # ✅ Fix: explicitly set num_classes and input_shape for UCI HAR
     if args.dataset == 'uci_har':
         args.num_classes = 6
-        args.input_shape = (9, 128)  # 9 sensor channels, 128 time steps
 
-    # ✅ Dataset loading
     if args.dataset == 'uci_har':
         train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_uci_har_dataloader(args)
     else:
@@ -49,6 +44,7 @@ def main(args):
 
     algorithm_class = alg.get_algorithm_class(args.algorithm)
     algorithm = algorithm_class(args).cuda()
+    algorithm._initialize_dclassifier(train_loader)
     algorithm.train()
 
     optd = get_optimizer(algorithm, args, nettype='Diversify-adv')
@@ -58,7 +54,6 @@ def main(args):
     for round in range(args.max_epoch):
         print(f'\n======== ROUND {round} ========')
 
-        # 1. Feature-level clustering (update_a)
         print('==== Feature update ====')
         loss_list = ['class']
         print_row(['epoch'] + [item + '_loss' for item in loss_list], colwidth=15)
@@ -68,7 +63,6 @@ def main(args):
                 loss_result_dict = algorithm.update_a(data, opta)
             print_row([step] + [loss_result_dict[item] for item in loss_list], colwidth=15)
 
-        # 2. Latent Domain Characterization
         print('==== Latent domain characterization ====')
         loss_list = ['total', 'dis', 'ent']
         print_row(['epoch'] + [item + '_loss' for item in loss_list], colwidth=15)
@@ -78,10 +72,8 @@ def main(args):
                 loss_result_dict = algorithm.update_d(data, optd)
             print_row([step] + [loss_result_dict[item] for item in loss_list], colwidth=15)
 
-        # 3. Assign pseudo-domain labels
         algorithm.set_dlabel(train_loader)
 
-        # 4. Domain-Invariant Feature Learning
         print('==== Domain-invariant feature learning ====')
         loss_list = alg_loss_dict(args)
         eval_dict = train_valid_target_eval_names(args)
@@ -115,7 +107,6 @@ def main(args):
             print_row([results[key] for key in print_key], colwidth=15)
 
     print(f"\n🎯 Final Target Accuracy: {target_acc:.4f}")
-
 
 if __name__ == '__main__':
     args = get_args()
