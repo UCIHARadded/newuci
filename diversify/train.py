@@ -33,9 +33,10 @@ def main(args):
     else:
         args.batch_size = 16 * args.latent_domain_num
 
-    # ✅ Fix: explicitly set num_classes for UCI HAR
+    # ✅ Fix: explicitly set num_classes and input_shape for UCI HAR
     if args.dataset == 'uci_har':
         args.num_classes = 6
+        args.input_shape = (9, 128)  # 9 sensor channels, 128 time steps
 
     # ✅ Dataset loading
     if args.dataset == 'uci_har':
