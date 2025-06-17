@@ -31,9 +31,9 @@ class Diversify(Algorithm):
         
         # ✅ Initialize dclassifier via dummy forward pass
         from uci_loader import get_uci_har_dataloader
-        sample_loader = get_uci_har_dataloader(args)[0]
-        sample_x, _, _ = next(iter(sample_loader))
-        sample_x = sample_x.cuda().float()
+        sample_loader = get_uci_har_dataloader(args)[0]  # train_loader
+        batch = next(iter(sample_loader))
+        sample_x = batch[0].cuda().float()
         
         with torch.no_grad():
             dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
