@@ -52,7 +52,24 @@ class Diversify(Algorithm):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
         all_d1 = minibatch[2].cuda().long()
+        all_d1 = all_d1 % self.args.latent_domain_num  # ✅ ensure valid domain range
+        assert all_d1.max() < self.args.latent_domain_num
 
+        z1 = self.dbottleneck(self.featurizer(all_x1))
+        disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
+        disc_out1 = self.ddiscriminator(disc_in1)
+    
+        disc_loss = F.cross_entropy(disc_out1, all_d1)
+    
+        cd1 = self.dclassifier(z1)
+        ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
+    
+        loss = ent_loss + disc_loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    
+        return {'total': loss.item(), 'dis': disc_loss.item(), 'ent': ent_loss.item()}
         if all_c1.min() < 0 or all_c1.max() >= self.args.num_classes:
             print("=== [ERROR] Invalid class label in update_d ===")
             print("all_c1.min():", all_c1.min().item())
