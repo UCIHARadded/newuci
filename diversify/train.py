@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
-
+import os
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import time
 import sys
 sys.path.append(".")  # Ensure current dir is in path
