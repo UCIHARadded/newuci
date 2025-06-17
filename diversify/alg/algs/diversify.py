@@ -30,6 +30,7 @@ class Diversify(Algorithm):
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
         
         # ✅ Initialize dclassifier via dummy forward pass
+        from uci_loader import get_uci_har_dataloader
         sample_loader = get_uci_har_dataloader(args)[0]
         sample_x, _, _ = next(iter(sample_loader))
         sample_x = sample_x.cuda().float()
