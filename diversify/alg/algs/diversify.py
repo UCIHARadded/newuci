@@ -130,7 +130,9 @@ class Diversify(Algorithm):
         all_x = minibatches[0].cuda().float()
         all_c = minibatches[1].cuda().long()
         all_d = minibatches[2].cuda().long()
+        all_d = all_d % self.args.latent_domain_num  # ✅ clamp domain to known latent range
         all_y = all_d * self.args.num_classes + all_c
+
 
         print("=== DEBUG: Class Label Check in update_a ===")
         print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
