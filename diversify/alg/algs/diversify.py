@@ -30,9 +30,12 @@ class Diversify(Algorithm):
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
         
         # ✅ Initialize dclassifier via dummy forward pass
-        dummy_x = torch.randn(2, *args.input_shape).cuda()
+        sample_loader = get_uci_har_dataloader(args)[0]
+        sample_x, _, _ = next(iter(sample_loader))
+        sample_x = sample_x.cuda().float()
+        
         with torch.no_grad():
-            dummy_z1 = self.dbottleneck(self.featurizer(dummy_x))
+            dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
             z1_dim = dummy_z1.shape[1]
             self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num).cuda()
         
