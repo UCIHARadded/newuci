@@ -23,16 +23,13 @@ class Diversify(Algorithm):
 
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
-        self.classifier = common_network.feat_classifier(
-            class_num=args.num_classes, bottleneck_dim=args.bottleneck, type=args.classifier)
+        self.classifier = common_network.feat_classifier(args.bottleneck, args.num_classes)
 
         self.abottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
-        self.aclassifier = common_network.feat_classifier(
-            class_num=args.num_classes * args.latent_domain_num, bottleneck_dim=args.bottleneck, type=args.classifier)
+        self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
 
-        self.dclassifier = common_network.feat_classifier(
-            class_num=args.latent_domain_num, bottleneck_dim=args.bottleneck, type=args.classifier)
+        self.dclassifier = common_network.feat_classifier(args.bottleneck, args.latent_domain_num)
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
 
