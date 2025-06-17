@@ -28,86 +28,53 @@ class Diversify(Algorithm):
         self.abottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
-        
-        # ✅ Initialize dclassifier via dummy forward pass
-        from uci_loader import get_uci_har_dataloader
-        sample_loader = get_uci_har_dataloader(args)[0]  # train_loader
-        batch = next(iter(sample_loader))
-        sample_x = batch[0].float()  # ✅ keep on CPU since model is on CPU during init
-        
-        with torch.no_grad():
-            dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
-            z1_dim = dummy_z1.shape[1]
-            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num)
 
+        # Will be dynamically initialized
+        self.dclassifier = None
+        self.dclassifier_initialized = False
         
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
         
         self.args = args
 
-        self.dclassifier_initialized = False
-
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
         all_d1 = minibatch[2].cuda().long()
-        all_d1 = all_d1 % self.args.latent_domain_num  # ✅ ensure valid domain range
-        assert all_d1.max() < self.args.latent_domain_num
 
-        z1 = self.dbottleneck(self.featurizer(all_x1))
-        disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
-        disc_out1 = self.ddiscriminator(disc_in1)
-    
-        disc_loss = F.cross_entropy(disc_out1, all_d1)
-    
-        cd1 = self.dclassifier(z1)
-        ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
-    
-        loss = ent_loss + disc_loss
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
-    
-        return {'total': loss.item(), 'dis': disc_loss.item(), 'ent': ent_loss.item()}
-        if all_c1.min() < 0 or all_c1.max() >= self.args.num_classes:
-            print("=== [ERROR] Invalid class label in update_d ===")
-            print("all_c1.min():", all_c1.min().item())
-            print("all_c1.max():", all_c1.max().item())
-            print("Expected num_classes:", self.args.num_classes)
-            raise ValueError("Invalid class labels for cross_entropy in update_d()")
+        # ✅ Ensure domain labels are within valid range
+        all_d1 = all_d1 % self.args.latent_domain_num
+        if all_d1.min() < 0 or all_d1.max() >= self.args.latent_domain_num:
+            print("🔥 [ERROR] Domain label out of range in update_d!")
+            print("all_d1.min():", all_d1.min().item(), " all_d1.max():", all_d1.max().item())
+            raise ValueError("Invalid domain labels for dclassifier!")
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
 
-        # ✅ Dynamically initialize dclassifier the first time we see z1
+        # ✅ Dynamically initialize dclassifier
         if not self.dclassifier_initialized:
             z1_dim = z1.shape[1]
             self.dclassifier = common_network.feat_classifier(z1_dim, self.args.latent_domain_num).cuda()
             self.dclassifier_initialized = True
             print(f"[INIT] dclassifier initialized with input dim: {z1_dim}")
 
-        # Debug check
-        assert z1.shape[1] == self.dclassifier.fc.in_features, f"Shape mismatch: z1={z1.shape[1]} vs fc.in={self.dclassifier.fc.in_features}"
+        # ✅ Check shape consistency
+        assert z1.shape[1] == self.dclassifier.fc.in_features, \
+            f"Shape mismatch: z1={z1.shape[1]} vs dclassifier input={self.dclassifier.fc.in_features}"
 
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
-        disc_loss = F.cross_entropy(disc_out1, all_d1, reduction='mean')
+        disc_loss = F.cross_entropy(disc_out1, all_d1)
 
         cd1 = self.dclassifier(z1)
-
-        if all_d1.min() < 0 or all_d1.max() >= self.args.latent_domain_num:
-            print("🔥 [ERROR] update_d got domain label out of range!")
-            print("all_d1.min():", all_d1.min().item(), " all_d1.max():", all_d1.max().item())
-            print("Expected label range: 0 to", self.args.latent_domain_num - 1)
-            raise ValueError("Domain label out of range for dclassifier!")
-        
         ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
-
 
         loss = ent_loss + disc_loss
         opt.zero_grad()
         loss.backward()
         opt.step()
+
         return {'total': loss.item(), 'dis': disc_loss.item(), 'ent': ent_loss.item()}
 
     def set_dlabel(self, loader):
