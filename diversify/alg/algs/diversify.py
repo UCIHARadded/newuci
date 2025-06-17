@@ -20,49 +20,38 @@ class Diversify(Algorithm):
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.ddiscriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.num_classes)
-        
+
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.classifier = common_network.feat_classifier(args.bottleneck, args.num_classes)
-        
+
         self.abottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
         self.aclassifier = common_network.feat_classifier(args.bottleneck, args.num_classes * args.latent_domain_num)
 
-        # Will be dynamically initialized
-        self.dclassifier = None
-        self.dclassifier_initialized = False
-        
+        # ✅ Initialize dclassifier via dummy forward pass
+        from uci_loader import get_uci_har_dataloader
+        sample_loader = get_uci_har_dataloader(args)[0]  # train_loader
+        batch = next(iter(sample_loader))
+        sample_x = batch[0].float()
+        with torch.no_grad():
+            dummy_z1 = self.dbottleneck(self.featurizer(sample_x))
+            z1_dim = dummy_z1.shape[1]
+            self.dclassifier = common_network.feat_classifier(z1_dim, args.latent_domain_num)
+
         self.discriminator = Adver_network.Discriminator(
             args.bottleneck, args.dis_hidden, args.latent_domain_num)
-        
+
         self.args = args
 
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
         all_d1 = minibatch[2].cuda().long()
-
-        # ✅ Ensure domain labels are within valid range
         all_d1 = all_d1 % self.args.latent_domain_num
-        if all_d1.min() < 0 or all_d1.max() >= self.args.latent_domain_num:
-            print("🔥 [ERROR] Domain label out of range in update_d!")
-            print("all_d1.min():", all_d1.min().item(), " all_d1.max():", all_d1.max().item())
-            raise ValueError("Invalid domain labels for dclassifier!")
+        assert all_d1.max() < self.args.latent_domain_num
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
-
-        # ✅ Dynamically initialize dclassifier
-        if not self.dclassifier_initialized:
-            z1_dim = z1.shape[1]
-            self.dclassifier = common_network.feat_classifier(z1_dim, self.args.latent_domain_num).cuda()
-            self.dclassifier_initialized = True
-            print(f"[INIT] dclassifier initialized with input dim: {z1_dim}")
-
-        # ✅ Check shape consistency
-        assert z1.shape[1] == self.dclassifier.fc.in_features, \
-            f"Shape mismatch: z1={z1.shape[1]} vs dclassifier input={self.dclassifier.fc.in_features}"
-
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
         disc_loss = F.cross_entropy(disc_out1, all_d1)
