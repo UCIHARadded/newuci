@@ -39,6 +39,12 @@ def main(args):
         train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_uci_har_dataloader(args)
     else:
         train_loader, train_loader_noshuffle, valid_loader, target_loader, _, _, _ = get_act_dataloader(args)
+        # For non-UCI datasets, ensure latent_domain_num is set
+        if hasattr(args, 'domain_num'):
+            args.latent_domain_num = args.domain_num
+
+    # Add domain validation check
+    print(f"[CONFIG] Using {args.latent_domain_num} domains with {args.num_classes} classes")
 
     best_valid_acc, target_acc = 0, 0
 
