@@ -18,9 +18,8 @@ class Diversify(Algorithm):
 
         self.dbottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
-        # FIX: Changed to latent_domain_num
         self.ddiscriminator = Adver_network.Discriminator(
-            args.bottleneck, args.dis_hidden, args.latent_domain_num)  # CRITICAL FIX
+            args.bottleneck, args.dis_hidden, args.latent_domain_num)
 
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
@@ -37,6 +36,7 @@ class Diversify(Algorithm):
 
         self.args = args
         self.dclassifier_initialized = False
+        self.domain_labels = None  # Placeholder for domain labels
 
     # UPDATED _initialize_dclassifier method to accept a dataloader
     def _initialize_dclassifier(self, loader):
@@ -108,6 +108,14 @@ class Diversify(Algorithm):
         classifier_loss.backward()
         opt.step()
         return {'class': classifier_loss.item()}
+    
+    # NEW METHOD: Add set_dlabel implementation
+    def set_dlabel(self, loader):
+        """
+        Placeholder for domain label setting
+        """
+        print("[INFO] set_dlabel called - no operation needed for Diversify")
+        pass
 
     def predict(self, x):
         return self.classifier(self.bottleneck(self.featurizer(x)))
