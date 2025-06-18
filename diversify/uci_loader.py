@@ -65,6 +65,8 @@ def get_uci_har_dataloader(args):
     # Remap subject IDs to domain indices
     all_subjects = sorted(set(s_train.tolist() + s_test.tolist()))
     sid_to_domain = {sid: idx for idx, sid in enumerate(all_subjects)}
+    args.latent_domain_num = len(all_subjects)  # Set actual domain count
+    
     s_train = torch.tensor([sid_to_domain[int(s)] for s in s_train], dtype=torch.long)
     s_test = torch.tensor([sid_to_domain[int(s)] for s in s_test], dtype=torch.long)
 
