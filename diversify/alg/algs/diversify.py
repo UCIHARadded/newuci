@@ -18,8 +18,9 @@ class Diversify(Algorithm):
 
         self.dbottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
+        # FIX: Changed to latent_domain_num
         self.ddiscriminator = Adver_network.Discriminator(
-            args.bottleneck, args.dis_hidden, args.num_classes)
+            args.bottleneck, args.dis_hidden, args.latent_domain_num)  # CRITICAL FIX
 
         self.bottleneck = common_network.feat_bottleneck(
             args.featurizer_out_dim, args.bottleneck, args.layer)
@@ -37,38 +38,36 @@ class Diversify(Algorithm):
         self.args = args
         self.dclassifier_initialized = False
 
-    # UPDATED _initialize_dclassifier method to accept a dataloader instead of tensor
+    # UPDATED _initialize_dclassifier method to accept a dataloader
     def _initialize_dclassifier(self, loader):
         if not self.dclassifier_initialized:
             self.featurizer.eval()
             self.dbottleneck.eval()
             with torch.no_grad():
                 for batch in loader:
-                    x = batch[0].cuda().float()  # assuming batch = (inputs, labels, domains, ...)
+                    x = batch[0].cuda().float()
                     z1 = self.dbottleneck(self.featurizer(x))
                     z1_dim = z1.shape[1]
                     self.dclassifier = common_network.feat_classifier(z1_dim, self.args.latent_domain_num).cuda()
                     self.dclassifier_initialized = True
                     print(f"[INIT] dclassifier initialized with input dim: {z1_dim}")
-                    break  # only need one batch to initialize
+                    break
             self.featurizer.train()
             self.dbottleneck.train()
 
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
-        all_d1 = minibatch[2].cuda().long()  # REMOVED MOD OPERATION
+        all_d1 = minibatch[2].cuda().long()
         
         # Add domain validation
         assert all_d1.min() >= 0 and all_d1.max() < self.args.latent_domain_num, \
             f"Domain labels out-of-range [min={all_d1.min()}, max={all_d1.max()}] for {self.args.latent_domain_num} domains"
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
-        # initialize dclassifier if not done yet
-        if not self.dclassifier_initialized:
-            self._initialize_dclassifier_from_tensor(z1)  # Remove this or change to always call with loader
-
-        assert z1.shape[1] == self.dclassifier.fc.in_features, f"Shape mismatch: z1={z1.shape[1]} vs fc.in={self.dclassifier.fc.in_features}"
+        
+        # We assume dclassifier is already initialized by train.py
+        assert self.dclassifier_initialized, "dclassifier not initialized!"
 
         disc_in1 = Adver_network.ReverseLayerF.apply(z1, self.args.alpha1)
         disc_out1 = self.ddiscriminator(disc_in1)
@@ -87,7 +86,7 @@ class Diversify(Algorithm):
     def update_a(self, minibatches, opt):
         all_x = minibatches[0].cuda().float()
         all_c = minibatches[1].cuda().long()
-        all_d = minibatches[2].cuda().long()  # REMOVED MOD OPERATION
+        all_d = minibatches[2].cuda().long()
         
         # Add domain validation
         assert all_d.min() >= 0 and all_d.max() < self.args.latent_domain_num, \
