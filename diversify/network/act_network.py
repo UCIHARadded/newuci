@@ -5,10 +5,6 @@ import torch
 import torch.nn as nn
 
 var_size = {
-    'emg': {
-        'in_size': 8,
-        'ker_size': 9,
-    },
     'uci_har': {
         'in_size': 570,  # 561 + 9 channels (fused input)
         'ker_size': 9,
