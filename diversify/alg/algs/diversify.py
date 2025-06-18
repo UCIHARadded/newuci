@@ -116,6 +116,37 @@ class Diversify(Algorithm):
         """
         print("[INFO] set_dlabel called - no operation needed for Diversify")
         pass
+    
+    # NEW METHOD: Add update implementation
+    def update(self, minibatch, opt):
+        """
+        Domain-invariant feature learning step
+        """
+        all_x = minibatch[0].cuda().float()
+        all_y = minibatch[1].cuda().long()
+        
+        # Forward pass through main classifier
+        features = self.featurizer(all_x)
+        features = self.bottleneck(features)
+        logits = self.classifier(features)
+        
+        # Calculate classification loss
+        class_loss = F.cross_entropy(logits, all_y)
+        
+        # Add any domain-invariant learning components here
+        # For now, we'll just use classification loss
+        total_loss = class_loss
+        
+        # Backpropagation
+        opt.zero_grad()
+        total_loss.backward()
+        opt.step()
+        
+        return {
+            'class': class_loss.item(),
+            'total': total_loss.item(),
+            'dis': 0.0  # Placeholder if not using domain loss here
+        }
 
     def predict(self, x):
         return self.classifier(self.bottleneck(self.featurizer(x)))
