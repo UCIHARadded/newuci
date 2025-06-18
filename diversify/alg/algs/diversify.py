@@ -57,7 +57,11 @@ class Diversify(Algorithm):
     def update_d(self, minibatch, opt):
         all_x1 = minibatch[0].cuda().float()
         all_c1 = minibatch[1].cuda().long()
-        all_d1 = minibatch[2].cuda().long() % self.args.latent_domain_num
+        all_d1 = minibatch[2].cuda().long()  # REMOVED MOD OPERATION
+        
+        # Add domain validation
+        assert all_d1.min() >= 0 and all_d1.max() < self.args.latent_domain_num, \
+            f"Domain labels out-of-range [min={all_d1.min()}, max={all_d1.max()}] for {self.args.latent_domain_num} domains"
 
         z1 = self.dbottleneck(self.featurizer(all_x1))
         # initialize dclassifier if not done yet
@@ -71,10 +75,6 @@ class Diversify(Algorithm):
         disc_loss = F.cross_entropy(disc_out1, all_d1)
 
         cd1 = self.dclassifier(z1)
-
-        if all_d1.min() < 0 or all_d1.max() >= self.args.latent_domain_num:
-            raise ValueError("Domain label out of range for dclassifier!")
-
         ent_loss = Entropylogits(cd1) * self.args.lam + F.cross_entropy(cd1, all_d1)
 
         loss = ent_loss + disc_loss
@@ -87,13 +87,19 @@ class Diversify(Algorithm):
     def update_a(self, minibatches, opt):
         all_x = minibatches[0].cuda().float()
         all_c = minibatches[1].cuda().long()
-        all_d = minibatches[2].cuda().long() % self.args.latent_domain_num
+        all_d = minibatches[2].cuda().long()  # REMOVED MOD OPERATION
+        
+        # Add domain validation
+        assert all_d.min() >= 0 and all_d.max() < self.args.latent_domain_num, \
+            f"Domain labels out-of-range in update_a [min={all_d.min()}, max={all_d.max()}]"
+
         all_y = all_d * self.args.num_classes + all_c
 
         print("=== DEBUG: Class Label Check in update_a ===")
         print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
         print("Expected total_classes:", self.args.num_classes * self.args.latent_domain_num)
         assert all_y.min() >= 0, "Label contains negative index!"
+        assert all_y.max() < self.args.num_classes * self.args.latent_domain_num, "Label exceeds max class index!"
 
         all_z = self.abottleneck(self.featurizer(all_x))
         all_preds = self.aclassifier(all_z)
