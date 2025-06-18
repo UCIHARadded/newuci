@@ -93,10 +93,6 @@ class Diversify(Algorithm):
             f"Domain labels out-of-range in update_a [min={all_d.min()}, max={all_d.max()}]"
 
         all_y = all_d * self.args.num_classes + all_c
-
-        print("=== DEBUG: Class Label Check in update_a ===")
-        print("all_y.min():", all_y.min().item(), " | all_y.max():", all_y.max().item())
-        print("Expected total_classes:", self.args.num_classes * self.args.latent_domain_num)
         assert all_y.min() >= 0, "Label contains negative index!"
         assert all_y.max() < self.args.num_classes * self.args.latent_domain_num, "Label exceeds max class index!"
 
