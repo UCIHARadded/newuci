@@ -45,36 +45,34 @@ alg/modelopera.py (model operations for evaluation)
 ---
 
 ### 📁 File Structure
-bash
-Copy
-Edit
-diversify/
-│
-├── alg/                     # Algorithms and model operations
-│   ├── alg.py
-│   ├── modelopera.py
-│   ├── opt.py
-│   └── algs/
-│       ├── base.py
-│       └── diversify.py
-│
-├── datautil/                # Dataset loaders and utilities
-│   ├── getdataloader_single.py
-│   └── actdata/
-│       ├── cross_people.py
-│       └── util.py
-│
-├── loss/                    # Loss functions
-│   └── common_loss.py
-│
-├── network/                 # Model architectures (details not listed)
-│
-├── utils/                   # Miscellaneous utilities
-│
-├── train.py                 # Main training entrypoint
-├── uci_loader.py            # UCI dataset loader
-├── requirements.txt         # Python dependencies
-└── env.yml                  # Conda environment file
+
+              diversify/
+              │
+              ├── alg/                     # Algorithms and model operations
+              │   ├── alg.py
+              │   ├── modelopera.py
+              │   ├── opt.py
+              │   └── algs/
+              │       ├── base.py
+              │       └── diversify.py
+              │
+              ├── datautil/                # Dataset loaders and utilities
+              │   ├── getdataloader_single.py
+              │   └── actdata/
+              │       ├── cross_people.py
+              │       └── util.py
+              │
+              ├── loss/                    # Loss functions
+              │   └── common_loss.py
+              │
+              ├── network/                 # Model architectures (details not listed)
+              │
+              ├── utils/                   # Miscellaneous utilities
+              │
+              ├── train.py                 # Main training entrypoint
+              ├── uci_loader.py            # UCI dataset loader
+              ├── requirements.txt         # Python dependencies
+              └── env.yml                  # Conda environment file
 
 ---
 
