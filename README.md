@@ -155,6 +155,15 @@ Diversification reports: Metrics showing the effect of diversification (implemen
 ---
 
 ### 🔬 Analysis (In-Depth)
+
+                | **Test Environment** | **Target Accuracy** |
+                | -------------------- | ------------------- |
+                | Test Envis 0         | 93%                 |
+                | Test Envis 1         | 88%                 |
+                | Test Envis 2         | 90%                 |
+                | Test Envis 3         | 92%                 |
+
+
 The diversification strategy introduces regularisation losses that encourage diverse feature learning, improving generalisation across subjects.
 
 Uses cross-validation splits (cross_people.py) to benchmark robustness.
