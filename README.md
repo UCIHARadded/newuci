@@ -166,6 +166,9 @@ Supports algorithmic extension via base classes in alg/algs/base.py, making it s
 
 
 ---
+### Contact
+
+rishabhgupta8218@gmail.com
 
 ### 📝 License
 This project is free for academic and commercial use with attribution.
