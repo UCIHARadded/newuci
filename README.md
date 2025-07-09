@@ -1,5 +1,8 @@
 ## 📝 Diversify UCI Pipeline
 
+![ChatGPT Image Jul 10, 2025, 01_34_08 AM](https://github.com/user-attachments/assets/8761758c-fcda-4ff5-a0aa-4eda19a1bd1f)
+
+
 ### 📌 Overview
 This repository implements diversified training algorithms for activity recognition using UCI datasets. It focuses on enhancing generalisation by applying algorithmic diversification strategies on top of neural architectures for sensor-based HAR (Human Activity Recognition).
 This project, of using diversify algorithm on UCI-HAR dataset, is an extension of the paper OUT-OF-DISTRIBUTION REPRESENTATION LEARNING FOR TIME SERIES CLASSIFICATION at ICLR 2023.
@@ -165,6 +168,7 @@ Supports algorithmic extension via base classes in alg/algs/base.py, making it s
 
 ### 📝 License
 This project is free for academic and commercial use with attribution.
+
                                 @misc{UCI-HAR2025,
                                   title={Diversify UCI Pipeline},
                                   author={Rishabh Gupta et al.},
