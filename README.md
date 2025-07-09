@@ -24,6 +24,9 @@ Training Loop: Epoch-wise training with evaluation hooks.
 
 Diversification: If enabled, integrates diversity-promoting regularisation.
 
+![ChatGPT Image Jul 10, 2025, 01_21_38 AM](https://github.com/user-attachments/assets/5f4dd34a-9e04-47b5-86ea-85b0cf1df77a)
+
+
 #### 🧪 Evaluation Pipeline
 Evaluation is embedded within train.py post each epoch, reporting metrics like accuracy and loss on validation/test splits.
 
@@ -33,14 +36,17 @@ alg/algs/diversify.py
 
 alg/modelopera.py (model operations for evaluation)
 
+![ChatGPT Image Jul 10, 2025, 01_27_53 AM](https://github.com/user-attachments/assets/18dda3d1-c7ad-4c76-bbaf-1fec5e3f5bdb)
+
+
 ---
 
 ### ✨ Key Features
-✅ Diversification algorithms for robust learning
-✅ Modular dataset loader supporting UCI HAR data
-✅ Extensible model operations and optimizer integrations
-✅ PyTorch-based implementation for rapid experimentation
-✅ Structured utility functions for reproducibility
+        ✅ Diversification algorithms for robust learning
+        ✅ Modular dataset loader supporting UCI HAR data
+        ✅ Extensible model operations and optimizer integrations
+        ✅ PyTorch-based implementation for rapid experimentation
+        ✅ Structured utility functions for reproducibility
 
 ---
 
@@ -86,30 +92,56 @@ Loaded via uci_loader.py with preprocessing and splitting scripts under datautil
 ---
 
 ### ▶️ How to Run
-Install dependencies
 
-bash
-Copy
-Edit
-conda env create -f env.yml
-conda activate diversify
+#### Install dependencies
+
+
+        conda env create -f env.yml
+        conda activate diversify
 or using pip:
 
-bash
-Copy
-Edit
-pip install -r requirements.txt
-Train a model
+        pip install -r requirements.txt
 
-bash
-Copy
-Edit
-python train.py --dataset <dataset_path> --alg diversify --epochs 100 --batch_size 64
-Replace <dataset_path> with your local path to UCI HAR dataset.
+#### Dataset Download
+
+        # Clean any existing files or folders
+        rm -rf data/UCI\ HAR\ Dataset data/UCI-HAR-dataset UCI-HAR.zip
+        
+        # Recreate the data directory
+        mkdir -p data/
+        
+        # Download the UCI HAR dataset
+        wget -O UCI-HAR.zip https://archive.ics.uci.edu/static/public/240/human+activity+recognition+using+smartphones.zip
+        
+        # Check contents of the ZIP (to confirm folder name inside ZIP)
+        unzip -l UCI-HAR.zip | head -n 20
+        
+        # Step 1: Extract outer ZIP
+        unzip -o UCI-HAR.zip -d data/
+        
+        # Step 2: Extract the inner ZIP
+        unzip -o "data/UCI HAR Dataset.zip" -d data/
+        
+        # Step 3: Rename folder to standard name
+        mv "data/UCI HAR Dataset" data/UCI-HAR-dataset
+        
+        # Step 4: Verify structure
+        ls data/UCI-HAR-dataset
+        
+#### Train a model
+
+          python train.py --data_dir ./data/UCI-HAR-dataset/ --task cross_people --test_envs 0 --dataset uci_har --algorithm diversify --latent_domain_num 10 --alpha1 1.0 --alpha 1.0 --lam 0.0 --local_epoch 3 --max_epoch 50 --lr 0.01 --output ./data/train_output/act/cross_people-uci_har-Diversify-0-10-1-1-0-3-2-0.01
+          
+          python train.py --data_dir ./data/UCI-HAR-dataset/ --task cross_people --test_envs 1 --dataset uci_har --algorithm diversify --latent_domain_num 2 --alpha1 0.1 --alpha 10.0 --lam 0.0 --local_epoch 10 --max_epoch 15 --lr 0.01 --output ./data/train_output/act/cross_people-uci_har-Diversify-1-2-0.1-10-0-10-15-0.01
+          
+          python train.py --data_dir ./data/UCI-HAR-dataset/ --task cross_people --test_envs 2 --dataset uci_har --algorithm diversify --latent_domain_num 20 --alpha1 0.5 --alpha 1.0 --lam 0.0 --local_epoch 1 --max_epoch 150 --lr 0.01 --output ./data/train_output/act/cross_people-uci_har-Diversify-2-20-0.5-1-0-1-150-0.01
+          
+          python train.py --data_dir ./data/UCI-HAR-dataset/ --task cross_people --test_envs 3 --dataset uci_har --algorithm diversify --latent_domain_num 5 --alpha1 5.0 --alpha 0.1 --lam 0.0 --local_epoch 5 --max_epoch 30 --lr 0.01 --output ./data/train_output/act/cross_people-uci_har-Diversify-3-5-5-0.1-0-5-30-0.01
 
 ---
 
 ### 🏆 Outputs and Artifacts
+
 Model checkpoints: Saved periodically (if implemented in train.py).
 
 Training logs: Epoch-wise accuracy, loss, and evaluation metrics.
@@ -127,10 +159,18 @@ Model operations (modelopera.py) implement forward, backward, and evaluation uti
 
 Supports algorithmic extension via base classes in alg/algs/base.py, making it straightforward to integrate novel diversification methods.
 
+
+
 ---
 
 ### 📝 License
-This repository is currently missing an explicit license file. Please add a LICENSE file (e.g. MIT, Apache 2.0) to define usage terms. Without it, the code remains copyrighted and re-use is restricted.
+This project is free for academic and commercial use with attribution.
+        @misc{UCI-HAR2025,
+          title={Diversify UCI Pipeline},
+          author={Rishabh Gupta et al.},
+          year={2025},
+          note={https://github.com/UCIHARadded/newuci}
+        }
 
 ---
 
