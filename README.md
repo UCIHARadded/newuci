@@ -2,7 +2,7 @@
 
 ### 📌 Overview
 This repository implements diversified training algorithms for activity recognition using UCI datasets. It focuses on enhancing generalisation by applying algorithmic diversification strategies on top of neural architectures for sensor-based HAR (Human Activity Recognition).
-This project of using diversify algorithm on UCI-HAR dataset is being an extension of this paper OUT-OF-DISTRIBUTION REPRESENTATION LEARNING FOR TIME SERIES CLASSIFICATION at ICLR 2023.
+This project, of using diversify algorithm on UCI-HAR dataset, is an extension of the paper OUT-OF-DISTRIBUTION REPRESENTATION LEARNING FOR TIME SERIES CLASSIFICATION at ICLR 2023.
 
 Link- https://paperswithcode.com/paper/generalized-representations-learning-for-time
 
