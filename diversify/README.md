@@ -1,6 +1,7 @@
 ## 📝 Diversify UCI Pipeline
 
-![ChatGPT Image Jul 10, 2025, 01_34_08 AM](https://github.com/user-attachments/assets/8761758c-fcda-4ff5-a0aa-4eda19a1bd1f)
+![ChatGPT Image Jul 10, 2025, 02_20_06 AM](https://github.com/user-attachments/assets/3b83e575-abdc-4b04-ad90-c5438e8a9373)
+
 
 
 ### 📌 Overview
