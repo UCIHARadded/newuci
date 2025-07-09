@@ -116,16 +116,16 @@ or using pip:
         # Check contents of the ZIP (to confirm folder name inside ZIP)
         unzip -l UCI-HAR.zip | head -n 20
         
-        # Step 1: Extract outer ZIP
+        # Extract outer ZIP
         unzip -o UCI-HAR.zip -d data/
         
-        # Step 2: Extract the inner ZIP
+        # Extract the inner ZIP
         unzip -o "data/UCI HAR Dataset.zip" -d data/
         
-        # Step 3: Rename folder to standard name
+        # Rename folder to standard name
         mv "data/UCI HAR Dataset" data/UCI-HAR-dataset
         
-        # Step 4: Verify structure
+        # Verify structure
         ls data/UCI-HAR-dataset
         
 #### Train a model
@@ -165,12 +165,12 @@ Supports algorithmic extension via base classes in alg/algs/base.py, making it s
 
 ### 📝 License
 This project is free for academic and commercial use with attribution.
-        @misc{UCI-HAR2025,
-          title={Diversify UCI Pipeline},
-          author={Rishabh Gupta et al.},
-          year={2025},
-          note={https://github.com/UCIHARadded/newuci}
-        }
+                                @misc{UCI-HAR2025,
+                                  title={Diversify UCI Pipeline},
+                                  author={Rishabh Gupta et al.},
+                                  year={2025},
+                                  note={https://github.com/UCIHARadded/newuci}
+                                }
 
 ---
 
