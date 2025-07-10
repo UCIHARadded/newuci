@@ -149,6 +149,14 @@ or using pip:
 
 ### 🏆 Outputs and Artifacts
 
+
+                | **Test Environment** | **Target Accuracy** |
+                | -------------------- | ------------------- |
+                | Test Envis 0         | 93%                 |
+                | Test Envis 1         | 88%                 |
+                | Test Envis 2         | 90%                 |
+                | Test Envis 3         | 92%                 |
+
 Model checkpoints: Saved periodically (if implemented in train.py).
 
 Training logs: Epoch-wise accuracy, loss, and evaluation metrics.
@@ -158,13 +166,6 @@ Diversification reports: Metrics showing the effect of diversification (implemen
 ---
 
 ### 🔬 Analysis (In-Depth)
-
-                | **Test Environment** | **Target Accuracy** |
-                | -------------------- | ------------------- |
-                | Test Envis 0         | 93%                 |
-                | Test Envis 1         | 88%                 |
-                | Test Envis 2         | 90%                 |
-                | Test Envis 3         | 92%                 |
 
 
 The diversification strategy introduces regularisation losses that encourage diverse feature learning, improving generalisation across subjects.
