@@ -29,7 +29,8 @@ Training Loop: Epoch-wise training with evaluation hooks.
 
 Diversification: If enabled, integrates diversity-promoting regularisation.
 
-![ChatGPT Image Jul 10, 2025, 01_47_41 AM](https://github.com/user-attachments/assets/2c2f55e7-73b7-4578-82fb-963a811a02da)
+<img width="359" height="539" alt="image" src="https://github.com/user-attachments/assets/429253e8-f880-4afb-b919-1ff4430db15b" />
+
 
 
 
