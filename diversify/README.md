@@ -1,7 +1,6 @@
 ## 📝 Diversify UCI Pipeline
 
-![ChatGPT Image Jul 10, 2025, 02_20_06 AM](https://github.com/user-attachments/assets/3b83e575-abdc-4b04-ad90-c5438e8a9373)
-
+<img width="415" height="375" alt="image" src="https://github.com/user-attachments/assets/655d037e-024c-4267-a81c-1929408c0a39" />
 
 
 ### 📌 Overview
@@ -28,7 +27,7 @@ Training Loop: Epoch-wise training with evaluation hooks.
 
 Diversification: If enabled, integrates diversity-promoting regularisation.
 
-![ChatGPT Image Jul 10, 2025, 01_47_41 AM](https://github.com/user-attachments/assets/2c2f55e7-73b7-4578-82fb-963a811a02da)
+<img width="359" height="539" alt="image" src="https://github.com/user-attachments/assets/429253e8-f880-4afb-b919-1ff4430db15b" />
 
 
 
@@ -41,7 +40,7 @@ alg/algs/diversify.py
 
 alg/modelopera.py (model operations for evaluation)
 
-![ChatGPT Image Jul 10, 2025, 01_27_53 AM](https://github.com/user-attachments/assets/18dda3d1-c7ad-4c76-bbaf-1fec5e3f5bdb)
+<img width="361" height="541" alt="image" src="https://github.com/user-attachments/assets/3100b6b4-37b8-4c3c-9d7f-11f62fc7b760" />
 
 
 ---
