@@ -89,7 +89,9 @@ alg/modelopera.py (model operations for evaluation)
 
 ### 📊 Dataset Supported
 UCI HAR Dataset
+
 direct link to download- https://archive.ics.uci.edu/static/public/240/human+activity+recognition+using+smartphones.zip
+
 Human Activity Recognition Using Smartphones Data Set
 
 Loaded via uci_loader.py with preprocessing and splitting scripts under datautil/actdata/.
@@ -183,12 +185,12 @@ rishabhgupta8218@gmail.com
 ### 📝 License
 This project is free for academic and commercial use with attribution.
 
-                                @misc{UCI-HAR2025,
-                                  title={Diversify UCI Pipeline},
-                                  author={Rishabh Gupta et al.},
-                                  year={2025},
-                                  note={https://github.com/UCIHARadded/newuci}
-                                }
+        @misc{UCI-HAR2025,
+          title={Diversify UCI Pipeline},
+          author={Rishabh Gupta et al.},
+          year={2025},
+          note={https://github.com/UCIHARadded/newuci}
+        }
 
 ---
 
