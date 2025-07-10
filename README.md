@@ -1,6 +1,7 @@
 ## 📝 Diversify UCI Pipeline
 
-<img width="520" height="347" alt="image" src="https://github.com/user-attachments/assets/867bd0f4-f498-4127-95f4-cb5be2e26570" />
+<img width="415" height="375" alt="image" src="https://github.com/user-attachments/assets/655d037e-024c-4267-a81c-1929408c0a39" />
+
 
 
 
@@ -43,7 +44,8 @@ alg/algs/diversify.py
 
 alg/modelopera.py (model operations for evaluation)
 
-![ChatGPT Image Jul 10, 2025, 01_27_53 AM](https://github.com/user-attachments/assets/18dda3d1-c7ad-4c76-bbaf-1fec5e3f5bdb)
+<img width="361" height="541" alt="image" src="https://github.com/user-attachments/assets/3100b6b4-37b8-4c3c-9d7f-11f62fc7b760" />
+
 
 
 ---
